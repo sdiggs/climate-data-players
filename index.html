@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Climate Data Stewardship Landscape - v0.9</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:        #0e1410;
+  --ink-soft:   #2a342c;
+  --slate:      #4a5556;
+  --paper:      #f4efe4;
+  --paper-deep: #e8e0cf;
+  --paper-dim:  #ddd3bd;
+  --line:       #c8bda3;
+  --line-soft:  #d8cfb8;
+  --forest:     #1f3a2e;
+  --forest-deep:#16291f;
+  --moss:       #6b7d6a;
+  --brass:      #b08840;
+  --brass-deep: #8c6a2c;
+  --brass-light:#d4b06a;
+  --rust:       #944a3b;
+  --plum:       #6b3a5a;
+  --steel:      #4a6b88;
+  --olive:      #7a6840;
+
+  --role-produce:    #8c6a2c;
+  --role-preserve:   #1f3a2e;
+  --role-activate:   #944a3b;
+  --role-coordinate: #4a6b88;
+  --role-advocate:   #6b3a5a;
+  --role-train:      #7a6840;
+
+  --federal-bg:      #2a3540;
+  --federal-bg-deep: #1a242e;
+  --federal-fg:      #f4efe4;
+  --federal-accent:  #d4b06a;
+
+  --shadow-soft: 0 1px 2px rgba(14,20,16,.05), 0 2px 6px rgba(14,20,16,.04);
+  --shadow-md:   0 2px 4px rgba(14,20,16,.06), 0 8px 24px rgba(14,20,16,.07);
+}
+
+* { box-sizing: border-box; }
+
+/* CRITICAL LAYOUT FIX (v0.9):
+   - html/body sized to viewport via 100%
+   - body is a flex column; main.layout flexes to fill
+   - #network is absolutely positioned inside section.graph
+   - This breaks the ResizeObserver feedback loop that caused v0.7/v0.8 to peg the CPU and never render
+*/
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  font-feature-settings: "ss01" on, "cv11" on;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+}
+button, select, input { font-family: inherit; }
+a { color: var(--forest); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--brass); color: var(--brass-deep); }
+
+/* vis-network tooltip styling (inlined) */
+div.vis-tooltip {
+  position: absolute;
+  visibility: hidden;
+  padding: 0;
+  white-space: normal;
+  font-family: "Manrope", system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--ink);
+  background-color: rgba(244, 239, 228, 0.98);
+  backdrop-filter: blur(8px);
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  z-index: 5;
+  max-width: 320px;
+  min-width: 220px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+.tt-head { padding: 10px 12px 8px; border-bottom: 1px solid var(--line-soft); }
+.tt-head.fed { background: var(--federal-bg); color: var(--federal-fg); border-bottom-color: var(--federal-bg-deep); }
+.tt-name { font-family: "Crimson Pro", Georgia, serif; font-weight: 600; font-size: 15px; color: var(--forest-deep); line-height: 1.2; }
+.tt-head.fed .tt-name { color: var(--federal-fg); font-family: "Manrope", system-ui, sans-serif; letter-spacing: 0.02em; font-weight: 700; }
+.tt-sub { font-family: "JetBrains Mono", monospace; font-size: 9px; color: var(--slate); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+.tt-head.fed .tt-sub { color: var(--federal-accent); }
+.tt-body { padding: 8px 12px 10px; }
+.tt-desc { font-size: 11.5px; color: var(--ink-soft); line-height: 1.45; margin: 0 0 6px; }
+.tt-roles { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+.tt-role { font-size: 9px; padding: 1px 6px; border-radius: 2px; font-weight: 500; letter-spacing: 0.02em; }
+.tt-role-produce    { background: rgba(140,106,44,.15); color: var(--role-produce); }
+.tt-role-preserve   { background: rgba(31,58,46,.12); color: var(--role-preserve); }
+.tt-role-activate   { background: rgba(148,74,59,.12); color: var(--role-activate); }
+.tt-role-coordinate { background: rgba(74,107,136,.14); color: var(--role-coordinate); }
+.tt-role-advocate   { background: rgba(107,58,90,.14); color: var(--role-advocate); }
+.tt-role-train      { background: rgba(122,104,64,.14); color: var(--role-train); }
+.tt-foot { font-family: "JetBrains Mono", monospace; font-size: 9px; color: var(--slate); padding: 6px 12px; background: var(--paper-deep); border-top: 1px solid var(--line-soft); letter-spacing: 0.02em; }
+.tt-foot.fed { background: rgba(26,36,46,.92); color: var(--federal-accent); border-top-color: var(--federal-bg-deep); }
+
+header.site {
+  flex: 0 0 auto;
+  padding: 22px 32px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+header.site .title { font-family: "Crimson Pro", Georgia, serif; font-weight: 600; font-size: 28px; color: var(--forest-deep); letter-spacing: -0.01em; line-height: 1.1; }
+header.site .title em { font-style: italic; color: var(--brass-deep); font-weight: 500; }
+header.site .subtitle { margin-top: 4px; font-size: 13px; color: var(--slate); max-width: 60ch; }
+header.site .meta { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; color: var(--slate); text-align: right; letter-spacing: 0.02em; }
+header.site .meta .pill { display: inline-block; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; margin-left: 4px; color: var(--ink-soft); }
+header.site .meta .pill.fed { background: var(--federal-bg); border-color: var(--federal-bg-deep); color: var(--federal-fg); }
+
+main.layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 290px 1fr 370px;
+  overflow: hidden;
+}
+@media (max-width: 1100px) { main.layout { grid-template-columns: 250px 1fr 320px; } }
+@media (max-width: 900px) {
+  html, body { overflow: auto; height: auto; }
+  main.layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 70vh auto;
+    overflow: visible;
+  }
+}
+
+aside.filters,
+aside.detail {
+  background: var(--paper);
+  overflow-y: auto;
+  padding: 22px 22px 32px;
+  min-height: 0;
+}
+aside.filters { border-right: 1px solid var(--line); }
+aside.detail  { border-left:  1px solid var(--line); }
+
+aside.filters h2,
+aside.detail h2 {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 14px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--forest);
+  margin: 22px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line-soft);
+}
+aside.filters h2.fed { color: var(--federal-bg); border-bottom-color: var(--federal-bg); }
+aside.filters h2:first-child, aside.detail h2:first-child { margin-top: 0; }
+
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink-soft);
+  border-radius: 999px;
+  font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all .15s ease;
+  user-select: none;
+}
+.pill-btn:hover { border-color: var(--ink-soft); }
+.pill-btn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--moss); display: inline-block; flex-shrink: 0; }
+.pill-btn .square { width: 8px; height: 8px; background: var(--federal-bg); display: inline-block; flex-shrink: 0; border-radius: 1px; }
+.pill-btn.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.pill-btn[data-group="fed"].active { background: var(--federal-bg); border-color: var(--federal-bg); }
+.pill-btn .count { font-family: "JetBrains Mono", monospace; font-size: 10px; opacity: .65; margin-left: 2px; }
+
+.reset-row { margin: 12px 0 0; display: flex; justify-content: space-between; align-items: center; }
+.reset-btn { background: none; border: none; font-size: 11px; color: var(--slate); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; cursor: pointer; padding: 0; }
+.reset-btn:hover { color: var(--rust); text-decoration-color: var(--rust); }
+
+.stats {
+  margin-top: 18px; padding: 12px 14px;
+  background: var(--paper-deep);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px; color: var(--ink-soft);
+}
+.stats .stat-row { display: flex; justify-content: space-between; padding: 2px 0; }
+.stats .stat-row .label { color: var(--slate); }
+.stats .stat-row .val { color: var(--ink); font-weight: 500; }
+.stats hr { border: 0; border-top: 1px dashed var(--line); margin: 6px 0; }
+
+/* THE KEY FIX: section.graph contains #network absolutely */
+section.graph {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 25% 25%, rgba(31,58,46,.045), transparent 55%),
+    radial-gradient(circle at 75% 65%, rgba(176,136,64,.045), transparent 55%),
+    var(--paper);
+  min-width: 0;
+  min-height: 0;
+}
+#network {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  /* fallback dimensions if absolute positioning misbehaves */
+  width: 100%;
+  height: 100%;
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(244,239,228,0.92);
+  z-index: 6;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  color: var(--slate);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: opacity .4s ease;
+  pointer-events: none;
+}
+.loading-overlay.hidden { opacity: 0; }
+
+.error-banner {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--rust);
+  color: var(--paper);
+  padding: 18px 28px;
+  border-radius: 6px;
+  font-family: "Manrope", sans-serif;
+  font-size: 13px;
+  max-width: 420px;
+  box-shadow: var(--shadow-md);
+  line-height: 1.5;
+  display: none;
+  z-index: 10;
+}
+.error-banner strong { font-family: "Crimson Pro", serif; font-size: 16px; display: block; margin-bottom: 6px; }
+.error-banner code { font-family: "JetBrains Mono", monospace; font-size: 11px; background: rgba(0,0,0,.18); padding: 1px 5px; border-radius: 2px; }
+
+.graph-legend {
+  position: absolute;
+  bottom: 16px; left: 16px;
+  background: rgba(244,239,228,.94);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 11px; color: var(--ink-soft);
+  box-shadow: var(--shadow-soft);
+  max-width: 280px;
+  z-index: 3;
+}
+.graph-legend .legend-title { font-family: "Crimson Pro", Georgia, serif; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; font-size: 10px; color: var(--forest); margin-bottom: 6px; }
+.graph-legend .legend-row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.graph-legend .swatch { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.graph-legend .swatch.halo { box-shadow: 0 0 0 2px var(--brass); background: var(--paper); }
+.graph-legend .swatch.box { border-radius: 2px; background: var(--federal-bg); }
+.graph-legend .edge-sample { display: inline-block; width: 22px; height: 2px; background: rgba(74,85,86,0.4); flex-shrink: 0; margin: 0 4px; }
+.graph-legend .edge-sample.dashed { background: transparent; border-top: 1px dashed rgba(176,136,64,0.7); height: 0; margin-top: 6px; }
+.graph-legend .legend-divider { border: 0; border-top: 1px dashed var(--line-soft); margin: 6px 0; }
+
+.graph-help {
+  position: absolute;
+  top: 16px; right: 16px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px; color: var(--slate);
+  background: rgba(244,239,228,.85);
+  border: 1px solid var(--line-soft);
+  padding: 4px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.export-bar {
+  position: absolute;
+  top: 16px; left: 16px;
+  display: flex; gap: 6px;
+  z-index: 4;
+}
+.export-btn, .fit-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  background: rgba(244,239,228,.94);
+  backdrop-filter: blur(6px);
+  color: var(--forest);
+  border-radius: 4px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  cursor: pointer; transition: all .15s ease;
+  box-shadow: var(--shadow-soft);
+  font-family: "Manrope", sans-serif;
+}
+.export-btn:hover { background: var(--forest); color: var(--paper); border-color: var(--forest); }
+.export-btn:disabled { opacity: .5; cursor: wait; }
+.export-btn .ico { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 9px; color: var(--brass-deep); }
+.export-btn:hover .ico { color: var(--brass-light); }
+.fit-btn { color: var(--slate); }
+.fit-btn:hover { background: var(--slate); color: var(--paper); border-color: var(--slate); }
+
+/* Detail panel - unchanged from v0.8 */
+aside.detail .panel-intro { font-family: "Crimson Pro", Georgia, serif; font-size: 17px; color: var(--ink-soft); line-height: 1.5; font-style: italic; border-left: 2px solid var(--brass); padding-left: 14px; margin: 6px 0 18px; }
+aside.detail .panel-intro p { margin: 0 0 10px; }
+aside.detail .about-body { font-size: 13px; color: var(--slate); line-height: 1.6; }
+aside.detail .about-body p { margin: 0 0 10px; }
+aside.detail .about-body strong { color: var(--ink); font-weight: 600; }
+.org-header { margin-bottom: 6px; }
+.org-name { font-family: "Crimson Pro", Georgia, serif; font-size: 22px; font-weight: 600; color: var(--forest-deep); line-height: 1.15; letter-spacing: -0.005em; margin: 0 0 4px; }
+.org-name.federal { color: var(--federal-bg); font-family: "Manrope", system-ui, sans-serif; letter-spacing: 0.01em; font-weight: 700; font-size: 20px; }
+.org-aliases { font-family: "JetBrains Mono", monospace; font-size: 10px; color: var(--slate); letter-spacing: 0.04em; }
+.org-type-row { display: flex; align-items: center; gap: 6px; margin: 10px 0 14px; font-size: 11px; flex-wrap: wrap; }
+.org-type-row .badge { font-family: "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper-deep); color: var(--ink-soft); font-size: 10px; }
+.org-type-row .badge.federal { background: var(--federal-bg); border-color: var(--federal-bg); color: var(--federal-fg); }
+.org-type-row .badge.parent { background: transparent; border: 1px dashed var(--federal-bg); color: var(--federal-bg); }
+.org-type-row .badge.kcf-inner { border-color: var(--brass); color: var(--brass-deep); background: rgba(176,136,64,.08); }
+.org-type-row .badge.priority-High { border-color: var(--forest); color: var(--forest); background: rgba(31,58,46,.08); }
+.org-type-row .badge.priority-Medium { border-color: var(--olive); color: var(--olive); }
+.org-type-row .badge.priority-Low { border-color: var(--line); color: var(--slate); }
+.org-description { font-size: 13px; color: var(--ink-soft); line-height: 1.55; margin: 0 0 14px; }
+.org-field { margin-top: 14px; }
+.org-field .label { font-family: "Crimson Pro", Georgia, serif; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--moss); margin-bottom: 5px; }
+.org-field.federal-section .label { color: var(--federal-bg); }
+.org-field .tag-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.org-field .tag { font-size: 11px; padding: 2px 8px; border-radius: 3px; background: var(--paper-deep); border: 1px solid var(--line-soft); color: var(--ink-soft); }
+.org-field .tag.federal { background: var(--federal-bg); color: var(--federal-fg); border-color: var(--federal-bg-deep); font-family: "JetBrains Mono", monospace; font-weight: 500; letter-spacing: 0.02em; }
+.org-field .tag.role-produce    { background: rgba(140,106,44,.10); border-color: rgba(140,106,44,.30); color: var(--role-produce); }
+.org-field .tag.role-preserve   { background: rgba(31,58,46,.08); border-color: rgba(31,58,46,.25); color: var(--role-preserve); }
+.org-field .tag.role-activate   { background: rgba(148,74,59,.08); border-color: rgba(148,74,59,.25); color: var(--role-activate); }
+.org-field .tag.role-coordinate { background: rgba(74,107,136,.10); border-color: rgba(74,107,136,.30); color: var(--role-coordinate); }
+.org-field .tag.role-advocate   { background: rgba(107,58,90,.10); border-color: rgba(107,58,90,.30); color: var(--role-advocate); }
+.org-field .tag.role-train      { background: rgba(122,104,64,.10); border-color: rgba(122,104,64,.30); color: var(--role-train); }
+.org-coords-list { margin: 0; padding: 0; list-style: none; font-size: 12px; }
+.org-coords-list li { padding: 3px 0; border-bottom: 1px dotted var(--line-soft); }
+.org-coords-list li:last-child { border-bottom: none; }
+.org-coords-list a { color: var(--ink-soft); text-decoration: none; cursor: pointer; }
+.org-coords-list a:hover { color: var(--brass-deep); text-decoration: underline; text-decoration-color: var(--brass); }
+.org-coords-list .role-marker { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--moss); margin-right: 6px; vertical-align: middle; }
+.org-contact-row { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; font-size: 12px; }
+.org-contact-row .person { color: var(--ink); font-weight: 500; }
+.org-contact-row .email { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--steel); }
+.org-url-link { font-size: 12px; word-break: break-all; }
+
+footer.site {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--line);
+  padding: 10px 32px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px; color: var(--slate);
+  display: flex; justify-content: space-between;
+  background: var(--paper);
+}
+footer.site .build-info { letter-spacing: 0.04em; }
+footer.site .credit { text-align: right; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div>
+    <div class="title">Climate Data Stewardship <em>Landscape</em></div>
+    <div class="subtitle">A network view of organizations engaged in the preservation and access of U.S. federal climate and environmental data, with KCF DCI and NYCE DSI shown as peer initiatives at producer and access ends of the lifecycle. Federal producers are shown as anchor nodes &mdash; the gravity this ecosystem orbits.</div>
+  </div>
+  <div class="meta">
+    <div>schema v0.9 &middot; <span id="org-count">--</span> orgs &middot; <span id="fed-count">--</span> federal &middot; <span id="edge-count">--</span> ties</div>
+    <div style="margin-top:4px;">
+      <span class="pill">KCF DCI</span>
+      <span class="pill">NYCE DSI</span>
+      <span class="pill fed">Federal anchors</span>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="filters">
+    <h2>Lifecycle Role</h2>
+    <div class="pills" id="role-pills"></div>
+    <h2>Capability</h2>
+    <div class="pills" id="cap-pills"></div>
+    <h2>Data Domain</h2>
+    <div class="pills" id="ds-pills"></div>
+    <h2>KCF Orbit</h2>
+    <div class="pills" id="kcf-pills"></div>
+    <h2>NYCE Priority</h2>
+    <div class="pills" id="pri-pills"></div>
+    <h2 class="fed">Federal Anchor</h2>
+    <div class="pills" id="fed-pills"></div>
+    <div class="reset-row">
+      <button class="reset-btn" id="reset-btn">reset all filters</button>
+    </div>
+    <h2>Visible</h2>
+    <div class="stats" id="stats"></div>
+  </aside>
+
+  <section class="graph">
+    <div id="network"></div>
+    <div class="loading-overlay" id="loading-overlay">building network...</div>
+    <div class="export-bar">
+      <button class="export-btn" id="export-png" title="Download as PNG"><span class="ico">PNG</span> Export</button>
+      <button class="export-btn" id="export-pdf" title="Download as PDF"><span class="ico">PDF</span> Export</button>
+      <button class="fit-btn"    id="fit-btn"    title="Fit all nodes in view">Fit</button>
+    </div>
+    <div class="graph-help">drag &middot; scroll to zoom &middot; click for detail &middot; hover for summary</div>
+    <div class="graph-legend">
+      <div class="legend-title">Roles</div>
+      <div class="legend-row"><span class="swatch" style="background:var(--role-produce)"></span>produce (sustain observations)</div>
+      <div class="legend-row"><span class="swatch" style="background:var(--role-preserve)"></span>preserve (archive, mirror)</div>
+      <div class="legend-row"><span class="swatch" style="background:var(--role-activate)"></span>activate (tools, access)</div>
+      <div class="legend-row"><span class="swatch" style="background:var(--role-coordinate)"></span>coordinate (connective tissue)</div>
+      <div class="legend-row"><span class="swatch" style="background:var(--role-advocate)"></span>advocate (policy voice)</div>
+      <div class="legend-row"><span class="swatch" style="background:var(--role-train)"></span>train (human capital)</div>
+      <hr class="legend-divider">
+      <div class="legend-row"><span class="swatch halo"></span>brass ring = KCF inner orbit</div>
+      <div class="legend-row"><span class="swatch box"></span>federal producer (anchor)</div>
+      <hr class="legend-divider">
+      <div class="legend-title">Ties</div>
+      <div class="legend-row"><span class="edge-sample"></span>coordinates with</div>
+      <div class="legend-row"><span class="edge-sample dashed"></span>depends on (data)</div>
+    </div>
+    <div class="error-banner" id="error-banner">
+      <strong>Network failed to initialize</strong>
+      <span id="error-detail">The vis-network library could not be loaded or instantiated. Check console for details.</span>
+    </div>
+  </section>
+
+  <aside class="detail" id="detail">
+    <h2>About</h2>
+    <div class="panel-intro">
+      <p>Click any node to inspect. Hover for a quick summary.</p>
+      <p>Round nodes are organizations active in stewardship. Dark rectangles are <strong>federal producers</strong> &mdash; the agencies that generate the underlying data the ecosystem orbits.</p>
+    </div>
+    <div class="about-body">
+      <p><strong>What this shows.</strong> 38 organizations and 11 federal data producers in the climate and environmental stewardship ecosystem. Solid ties are explicit "coordinates with" relationships between orgs (49). Dashed ties (76) point from an org to the federal producer whose data it explicitly works with.</p>
+      <p><strong>The peer-initiative frame.</strong> KCF's Data Continuity Initiative (DCI) anchors the producer end &mdash; sustaining the observations themselves. NYCE's Data Stewardship Initiative (DSI) anchors the access end &mdash; governance, usability, public-facing tools. The preservation cohort in between (PEDP, Data Rescue Project, ESIP, ICPSR/DataLumos, Harvard LIL, Source Cooperative) needs a shared prioritization spine. The brass-ringed nodes are the KCF inner orbit: orgs actively coordinating with DCI on producer/continuity work.</p>
+      <p><strong>Why federal producers are anchors.</strong> NOAA, NASA, USGS, NSF, EPA, USDA, DOE, NIST, FEMA, ONR, DOI aren't orgs to "recruit" into the stewardship ecosystem &mdash; they're the agencies generating the data the ecosystem exists to preserve and activate. Showing them as anchor nodes makes that gravity visible, and the dashed dependency edges make the data-flow picture explicit.</p>
+      <p style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--slate);">v0.9 &middot; built from Megha's organizations_2026-05-21.csv plus prior NYCE landscape analysis &middot; standalone parallel to her Replit directory.</p>
+    </div>
+  </aside>
+</main>
+
+<footer class="site">
+  <div class="build-info">schema v0.9 &middot; generated 2026-05-21 &middot; SC / KCF DCI &times; NYCE DSI</div>
+  <div class="credit">vis-network &middot; single-file HTML</div>
+</footer>
+
+<!-- (1) Suppress ResizeObserver loop errors EARLY, before vis-network attaches -->
+<script>
+(function() {
+  function isROError(msg) {
+    return msg && typeof msg === 'string' && msg.indexOf('ResizeObserver') !== -1;
+  }
+  window.addEventListener('error', function(e) {
+    if (e && isROError(e.message)) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      return false;
+    }
+  }, true);
+  // Some Chromium versions wrap it as an unhandledrejection
+  window.addEventListener('unhandledrejection', function(e) {
+    var msg = e && e.reason && (e.reason.message || String(e.reason));
+    if (isROError(msg)) {
+      e.preventDefault();
+    }
+  });
+  // Also patch console.error so the noise doesn't trigger downstream observers
+  var origErr = console.error;
+  console.error = function() {
+    if (arguments[0] && isROError(String(arguments[0]))) return;
+    return origErr.apply(console, arguments);
+  };
+})();
+</script>
+
+<!-- (2) Data island BEFORE network library so we can reference textContent safely -->
+<script id="kg-data" type="application/json">{"schema_version":"0.9","generated":"2026-05-21","orgs":[{"id":"americas-essential-data","name":"America's Essential Data","aliases":[],"url":"https://essentialdata.us/","description":"Collaborative effort dedicated to documenting the value that data produced by the federal government provides for American lives.","type":"nonprofit","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government"],"preservation_role":["advocate"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"american-geophysical-union","name":"American Geophysical Union (AGU)","aliases":["AGU"],"url":"https://www.agu.org/","description":"AGU highlights impactful datasets supporting research and decision making. Recently awarded a grant to convene the community for data resilience efforts.","type":"nonprofit","contact":{"name":"Shelley Stall","email":"SStall@agu.org"},"capabilities":["Surfaces Priority Datasets","Assesses risk to datasets"],"datasets":["GHG","Climate"],"preservation_role":["coordinate","advocate"],"kcf_alignment":"inner","nyce_priority":"High","kind":"organization"},{"id":"climate-program-portal","name":"Climate Program Portal","aliases":[],"url":"https://climateprogramportal.org/","description":"Tracks IIJA/IRA climate investments via public dashboards (climateprogramportal.org, waterprogramportal.org, cleaneconomytracker.org). Pulls from federal agencies, White House data, CJEST; ~3,500 users. Holds GHGRP 2010-2023 in accessible form.","type":"nonprofit","contact":{"name":"Jaclyn Lea","email":"jaclyn.lea@atlaspolicy.com"},"capabilities":["Surfaces Priority Datasets","Archives and/or Mirrors"],"datasets":["Government","Climate","GHG"],"preservation_role":["activate","preserve"],"kcf_alignment":"","nyce_priority":"Medium","kind":"organization"},{"id":"climate-ocean-data-action-network","name":"Climate-Ocean Data Action Network (CDAN)","aliases":["CDAN"],"url":"https://doi.org/10.5281/zenodo.17203996","description":"Informal coalition developing open guidance for safeguarding ocean-climate data and prioritizing preservation.","type":"nonprofit","contact":{"name":"Kate Wing","email":"kate@intertidal.agency"},"capabilities":["Assesses risk to datasets","Proposes or generates proxy/alternative datasets"],"datasets":["Climate"],"preservation_role":["coordinate"],"kcf_alignment":"inner","nyce_priority":"High","kind":"organization"},{"id":"climateus","name":"Climate.us","aliases":[],"url":"http://climate.us","description":"Successor to climate.gov, delivering climate data and information in accessible ways.","type":"nonprofit","contact":{"name":"Rebecca Lindsey","email":"rlindsey@climate.us"},"capabilities":["Archives and/or Mirrors"],"datasets":["Climate"],"preservation_role":["activate"],"kcf_alignment":"","nyce_priority":"High","kind":"organization"},{"id":"code","name":"CODE (Center for Open Data Enterprise)","aliases":["CODE"],"url":"https://policycommons.net/","description":"Advancing open government data through cross-sector convenings and partnerships.","type":"nonprofit","contact":{"name":"Joel Gurin","email":"joel@odenterprise.org"},"capabilities":["Surfaces Priority Datasets"],"datasets":["Government"],"preservation_role":["coordinate","advocate"],"kcf_alignment":"","nyce_priority":"High","kind":"organization"},{"id":"cornerstone-data-initiative","name":"Cornerstone Data Initiative","aliases":[],"url":"http://cornerstonedata.org","description":"Maintains and merges USEEIO and CEDA models for corporate carbon accounting globally.","type":"academic","contact":{"name":"Dr. Wesley Ingwersen","email":"ingwersw@stanford.edu"},"capabilities":["Archives and/or Mirrors","Proposes or generates proxy/alternative datasets"],"datasets":["GHG","Environmental"],"preservation_role":["activate","produce"],"kcf_alignment":"adjacent","nyce_priority":"High","kind":"organization"},{"id":"data-curation-network","name":"Data Curation Network","aliases":["DCN"],"url":"https://datacuration.network/","description":"Cross-institutional network pooling data curation experts across many data types (spatial, code, databases, chemical spectra, 3D images, genomics). Develops workflows and best practices that other preservation orgs (Data Rescue Project, ICPSR) build on.","type":"academic","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government","Social Science","Ecological"],"preservation_role":["preserve","train","coordinate"],"kcf_alignment":"","nyce_priority":"Medium","kind":"organization"},{"id":"data-foundation---climate-data-collaborative","name":"Data Foundation - Climate Data Collaborative","aliases":["Climate Data Collaborative","CDC","GHG Coalition","Data Foundation"],"url":"http://climatedatacollaborative.org","description":"Connects stakeholders to make climate and environmental data work better. Includes the GHG Coalition for U.S. GHG measurement.","type":"nonprofit","contact":{"name":"Sonia Wang","email":"sonia.wang@datafoundation.org"},"capabilities":["Surfaces Priority Datasets"],"datasets":["GHG","Climate","Environmental"],"preservation_role":["coordinate"],"kcf_alignment":"inner","nyce_priority":"High","kind":"organization"},{"id":"data-liberation-project","name":"Data Liberation Project","aliases":[],"url":"https://www.data-liberation-project.org/","description":"Run by BigLocalNews and MuckRock, focused on liberating government data.","type":"nonprofit","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government"],"preservation_role":["preserve","advocate"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"dataone","name":"DataONE","aliases":[],"url":"https://www.dataone.org/","description":"Community-driven project providing access to data across multiple member repositories.","type":"nonprofit","contact":{"name":"","email":""},"capabilities":["Archives and/or Mirrors"],"datasets":["Environmental","Ecological"],"preservation_role":["preserve","coordinate"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"dryad","name":"Dryad","aliases":[],"url":"https://datadryad.org/","description":"A generalist repository available to help with data publication, storage, and preservation.","type":"nonprofit","contact":{"name":"","email":""},"capabilities":[],"datasets":["Climate","Environmental","Government"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"earth-science-information-partners","name":"Earth Science Information Partners (ESIP)","aliases":["ESIP"],"url":"https://www.esipfed.org/","description":"Federated network of 193+ partners (NASA, NCAR, UT Austin, NOAA-adjacent) supporting geoscience data stewardship. Developed Repository Crisis Scorecards (RCS) for measuring repository resiliency, accessibility, and societal impact.","type":"nonprofit","contact":{"name":"Joseph Gum","email":"josephigum@gmail.com"},"capabilities":["Assesses risk to datasets","Archives and/or Mirrors"],"datasets":["Climate","Atmospheric","Ecological","Government"],"preservation_role":["preserve","coordinate"],"kcf_alignment":"adjacent","nyce_priority":"Medium","kind":"organization"},{"id":"end-of-term-archive","name":"End of Term Archive","aliases":["EOT"],"url":"https://eotarchive.org/","description":"The main coordinated effort to save U.S. Government websites at the end of presidential administrations. Focuses on websites and datasets.","type":"academic","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Medium","kind":"organization"},{"id":"environmental-health-data-analysis-trust","name":"Environmental & Health Data & Analysis Trust","aliases":["EHDAT"],"url":"https://ehdat.org/","description":"Meets critical analytical needs of state and local agencies related to environmental and health impacts.","type":"nonprofit","contact":{"name":"Sam Kay","email":"sam@ehdat.org"},"capabilities":["Archives and/or Mirrors","Proposes or generates proxy/alternative datasets"],"datasets":["Environmental"],"preservation_role":["activate"],"kcf_alignment":"","nyce_priority":"High","kind":"organization"},{"id":"environmental-data-governance-initiative","name":"Environmental Data & Governance Initiative (EDGI)","aliases":["EDGI"],"url":"https://envirodatagov.org/","description":"A research collaborative promoting evidence-based policy-making and public interest science. Focused on environmental data.","type":"academic","contact":{"name":"","email":""},"capabilities":[],"datasets":["Environmental"],"preservation_role":["preserve","advocate"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"environmental-policy-innovation-center","name":"Environmental Policy Innovation Center (EPIC)","aliases":["EPIC"],"url":"https://www.policyinnovation.org/","description":"Policy and tool development organization with expertise in environmental justice tools (EJ Tools Inventory). Deep bench of former federal environmental data staff. PEDP partner; preservation work largely runs through PEDP rather than standalone archiving.","type":"nonprofit","contact":{"name":"Jessie Mahr","email":""},"capabilities":["Surfaces Priority Datasets"],"datasets":["Environmental","Government"],"preservation_role":["advocate","activate"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"esri","name":"ESRI","aliases":[],"url":"https://www.esri.com/","description":"GIS technology platform with strong federal partnerships (NOAA, NASA, FEMA, EPA). Mirrors thousands of federal geospatial layers and tools (7 PB satellite data in EU backup; 500 GB FEMA flood zone data). Preservation is user-driven rather than rescue-focused.","type":"company","contact":{"name":"Dan Pisut","email":""},"capabilities":["Archives and/or Mirrors"],"datasets":["Government","Climate","Environmental"],"preservation_role":["preserve","activate"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"fractracker","name":"FracTracker (Federal Accountability)","aliases":[],"url":"https://fractracker.org/","description":"Supports communities investigating risks and documenting harms of oil and gas operations with data and mapping.","type":"nonprofit","contact":{"name":"Shannon Smith","email":"smith@fractracker.org"},"capabilities":["Archives and/or Mirrors","Assesses risk to datasets"],"datasets":["Environmental"],"preservation_role":["activate","advocate"],"kcf_alignment":"","nyce_priority":"High","kind":"organization"},{"id":"group-on-reference-quality-data-sets","name":"Group on Reference Quality Data sets (GRQDs)","aliases":["GRQD","GRQDs"],"url":"https://www.spglobal.com/","description":"Focused on strategies for identifying and preserving at-risk Reference Quality Data sets that underpin climate science.","type":"company","contact":{"name":"Tom Karl","email":"thomas.karl@spglobal.com"},"capabilities":["Assesses risk to datasets","Surfaces Priority Datasets"],"datasets":["Climate"],"preservation_role":["produce","coordinate"],"kcf_alignment":"inner","nyce_priority":"High","kind":"organization"},{"id":"harvards-library-innovation-lab-team","name":"Harvard's Library Innovation Lab Team","aliases":["Harvard LIL","LIL"],"url":"https://lil.law.harvard.edu/blog/2025/01/30/preserving-public-u-s-federal-data/","description":"A team working on preserving public U.S. federal data, including an archive of data.gov on Source Cooperative.","type":"academic","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Medium","kind":"organization"},{"id":"icpsr","name":"ICPSR","aliases":["DataLumos","ICPSR/DataLumos"],"url":"https://www.icpsr.umich.edu/","description":"International consortium providing data access, curation, and analysis for social science research.","type":"academic","contact":{"name":"","email":""},"capabilities":["Archives and/or Mirrors"],"datasets":["Social Science","Government"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Medium","kind":"organization"},{"id":"ipums","name":"IPUMS","aliases":[],"url":"https://www.ipums.org/","description":"Provides census and survey data from around the world integrated across time and space. Includes major US government data sources.","type":"academic","contact":{"name":"","email":""},"capabilities":[],"datasets":["Social Science","Government"],"preservation_role":["preserve","activate"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"keeling-curve-foundation","name":"Keeling Curve Foundation (KCF)","aliases":["KCF","Data Continuity Initiative","DCI"],"url":"https://keelingcurve.org/","description":"Identifies priority long-term Earth system observations and established the Data Continuity Initiative for funding.","type":"nonprofit","contact":{"name":"Ralph Keeling","email":"ralph@keelingcurve.org"},"capabilities":["Surfaces Priority Datasets","Assesses risk to datasets"],"datasets":["GHG","Atmospheric"],"preservation_role":["produce","coordinate"],"kcf_alignment":"inner","nyce_priority":"High","kind":"organization"},{"id":"national-academies-earth-obs-workshop","name":"National Academies (NASEM) Earth Obs Workshop","aliases":["NASEM Workshop","National Academies"],"url":"https://www.nationalacademies.org/","description":"Convenes community to exchange ideas on enhancing coordination and governance for Earth observations.","type":"nonprofit","contact":{"name":"Steven Stichter","email":"SStichter@nas.edu"},"capabilities":["Assesses risk to datasets"],"datasets":["Climate"],"preservation_role":["coordinate"],"kcf_alignment":"inner","nyce_priority":"High","kind":"organization"},{"id":"new-york-climate-exchange","name":"New York Climate Exchange (NYCE)","aliases":["NYCE","Climate Data Stewardship Initiative","DSI"],"url":"https://nyclimateexchange.org/","description":"Launched Climate Data Stewardship initiative to preserve and activate federal climate data.","type":"nonprofit","contact":{"name":"Andel Koester","email":"akoester@nyclimateexchange.org"},"capabilities":["Archives and/or Mirrors","Surfaces Priority Datasets"],"datasets":["Climate"],"preservation_role":["activate","coordinate"],"kcf_alignment":"inner","nyce_priority":"High","kind":"organization"},{"id":"pangaea","name":"PANGAEA","aliases":[],"url":"https://www.pangaea.de/","description":"Open-access publisher and archive for Earth and environmental science data, operated by AWI Bremerhaven and MARUM Bremen. ~200 TB scale; curates georeferenced datasets into relational systems for durable access. NOAA partner.","type":"academic","contact":{"name":"Frank Oliver Glockner","email":"frank.oliver.gloeckner@awi.de"},"capabilities":["Archives and/or Mirrors"],"datasets":["Climate","Environmental","Ecological"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"policy-commons-open-collection","name":"Policy Commons Open Collection","aliases":["Policy Commons"],"url":"https://coherentdigital.net/open-2025","description":"Initiative to identify, preserve, and make available government materials at risk of disappearing.","type":"nonprofit","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"public-environmental-data-partners","name":"Public Environmental Data Partners (PEDP)","aliases":["PEDP","Public Environmental Data Partners"],"url":"https://openenvironmentaldata.org/","description":"Coalition mission to preserve, protect, and expand public access to climate and environmental data.","type":"nonprofit","contact":{"name":"Brittany Janis","email":"brittany@openenvironmentaldata.org"},"capabilities":["Archives and/or Mirrors","Surfaces Priority Datasets","Assesses risk to datasets"],"datasets":["Climate","Environmental"],"preservation_role":["preserve","coordinate","advocate"],"kcf_alignment":"adjacent","nyce_priority":"High","kind":"organization"},{"id":"ship","name":"SHIP (Strengthening Human Infrastructure Project)","aliases":["SHIP","AGCI SHIP"],"url":"https://www.agci.org/ship","description":"Three-year coalition initiative coordinated by the Aspen Global Change Institute (AGCI) to sustain and rebuild the human infrastructure behind climate action. Deploys talent via fellowSHIPs; runs a shared learning hub across 30+ partners.","type":"nonprofit","contact":{"name":"Dhruv Patel-Tupper","email":"dpateltupper@agci.org"},"capabilities":[],"datasets":[],"preservation_role":["train","coordinate"],"kcf_alignment":"adjacent","nyce_priority":"Medium","kind":"organization"},{"id":"silencing-science-tracker","name":"Silencing Science Tracker","aliases":[],"url":"https://climate.law.columbia.edu/Silencing-Science-Tracker","description":"Tracks government attempts to restrict scientific research, education, or discussion.","type":"academic","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government"],"preservation_role":["advocate"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"source-cooperative","name":"Source Cooperative","aliases":[],"url":"https://source.coop/","description":"Community-driven platform for sharing and maintaining open geospatial data. Infrastructure partner hosting open data collections at scale; houses Harvard LIL's federal data vault.","type":"nonprofit","contact":{"name":"Jed Sundwall","email":""},"capabilities":["Archives and/or Mirrors"],"datasets":["Government","Climate","Environmental"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Medium","kind":"organization"},{"id":"stanfords-big-local-news","name":"Stanford's Big Local News","aliases":[],"url":"http://cjlab.stanford.edu/projects/big-local-news/","description":"Produces the Federal data collection collaborative and helps with data liberation.","type":"academic","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government"],"preservation_role":["preserve","activate"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"the-data-rescue-project","name":"The Data Rescue Project","aliases":["DRP"],"url":"https://www.datarescueproject.org/","description":"Clearinghouse for at-risk U.S. government data, coordinating gathering, cleaning, and cataloging.","type":"nonprofit","contact":{"name":"Lynda Kellam","email":"lyndamk@gmail.com"},"capabilities":["Archives and/or Mirrors","Surfaces Priority Datasets"],"datasets":["Government","Environmental"],"preservation_role":["preserve","coordinate"],"kcf_alignment":"adjacent","nyce_priority":"High","kind":"organization"},{"id":"the-impact-project","name":"The Impact Project","aliases":[],"url":"https://theimpactproject.org/","description":"Nonpartisan data platform building tools to demonstrate the importance of public service.","type":"nonprofit","contact":{"name":"Abby Andre","email":"abby@theimpactproject.org"},"capabilities":["Surfaces Priority Datasets","Proposes or generates proxy/alternative datasets"],"datasets":["Government","Public Services"],"preservation_role":["activate","coordinate"],"kcf_alignment":"","nyce_priority":"Medium","kind":"organization"},{"id":"the-lgbtq-archive","name":"The LGBTQ+ Archive","aliases":[],"url":"https://www.thelgbtqarchive.org/","description":"Independent effort to preserve and make accessible information on health, legal rights, and safety for the LGBTQ+ community.","type":"independent","contact":{"name":"","email":""},"capabilities":[],"datasets":["Social Science"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"wayback-machine","name":"Wayback Machine","aliases":["Internet Archive"],"url":"https://web.archive.org/","description":"An initiative of the Internet Archive building a digital library of Internet sites and other cultural artifacts in digital form.","type":"nonprofit","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"webrecorder","name":"Webrecorder","aliases":[],"url":"https://webrecorder.net/","description":"Open source solutions to preserve modern, interactive websites exactly as they appear.","type":"nonprofit","contact":{"name":"","email":""},"capabilities":[],"datasets":["Government"],"preservation_role":["preserve"],"kcf_alignment":"","nyce_priority":"Low","kind":"organization"},{"id":"fed-noaa","name":"NOAA","aliases":["National Oceanic and Atmospheric Administration","NOAA NCEI","NOAA OCL"],"parent":"Department of Commerce","url":"https://www.noaa.gov/","description":"Primary federal producer of ocean, atmospheric, weather, and climate observations. Climate-relevant sub-units include NCEI (National Centers for Environmental Information), OCL (Ocean Climate Laboratory) where the World Ocean Database resides, NWS, NESDIS, GFDL, and PMEL.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-nasa","name":"NASA","aliases":["National Aeronautics and Space Administration","NASA EOSDIS","NASA DAACs"],"parent":"Independent Agency","url":"https://www.nasa.gov/","description":"Federal producer of Earth observation and remote sensing data. The EOSDIS network of 12 DAACs (Distributed Active Archive Centers) handles atmospheric, ocean, cryosphere, land, and human dimensions data; key DAACs include PO.DAAC, NSIDC DAAC, ORNL DAAC, GES DISC, ASF DAAC, LP DAAC.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-usgs","name":"USGS","aliases":["U.S. Geological Survey"],"parent":"Department of the Interior","url":"https://www.usgs.gov/","description":"Federal producer of hydrologic, geologic, biological, and geographic data. Land Change Science, Earthquake Hazards, Water Resources, and Ecosystems missions generate long-term observational records.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-nsf","name":"NSF","aliases":["National Science Foundation"],"parent":"Independent Agency","url":"https://www.nsf.gov/","description":"Federal funder and steward of basic research data. Sponsors observational networks via FFRDCs (NCAR), large facilities (NEON, OOI, IRIS, UNAVCO/EarthScope), and the polar programs.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-epa","name":"EPA","aliases":["Environmental Protection Agency"],"parent":"Independent Agency","url":"https://www.epa.gov/","description":"Federal producer of environmental regulatory and monitoring data. GHGRP (Greenhouse Gas Reporting Program), EJScreen, USEEIO, AQS (Air Quality System), STORET/WQX, ECHO, TRI; underpins much of the environmental justice and emissions analytical work in the broader ecosystem.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-usda","name":"USDA","aliases":["U.S. Department of Agriculture"],"parent":"Cabinet Department","url":"https://www.usda.gov/","description":"Federal producer of agricultural, soils, forestry, and rural land-use data. Climate-relevant sub-units include USFS (Forest Service), ARS (Agricultural Research Service), NRCS, NASS, ERS.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-doe","name":"DOE","aliases":["Department of Energy"],"parent":"Cabinet Department","url":"https://www.energy.gov/","description":"Federal producer of energy, climate-modeling, and atmospheric measurement data. Key climate-relevant programs: ARM (Atmospheric Radiation Measurement), ESS-DIVE (Environmental Systems Science Data Infrastructure), the national labs (LBNL, ORNL, PNNL, NREL), and OSTI.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-nist","name":"NIST","aliases":["National Institute of Standards and Technology"],"parent":"Department of Commerce","url":"https://www.nist.gov/","description":"Federal producer of measurement standards, calibration reference data, and standard reference materials. Foundational role in GHG measurement traceability, atmospheric instrument calibration, and reference quality data definition.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-fema","name":"FEMA","aliases":["Federal Emergency Management Agency"],"parent":"Department of Homeland Security","url":"https://www.fema.gov/","description":"Federal producer of hazard and disaster data including the National Flood Hazard Layer, the National Risk Index, and Hazard Mitigation Plans. Heavily mirrored in ESRI's federal layer set.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-onr","name":"ONR","aliases":["Office of Naval Research"],"parent":"Department of Defense","url":"https://www.nre.navy.mil/","description":"DoD-side federal funder of ocean and atmospheric research. Relevant to ocean observation continuity discussions (e.g., potential DoD co-sponsorship of Argo and other sustained observation programs).","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""},{"id":"fed-doi","name":"DOI","aliases":["Department of the Interior"],"parent":"Cabinet Department","url":"https://www.doi.gov/","description":"Cabinet department housing USGS plus BLM, BOEM, NPS, FWS, BIA. Coordinating role across land, marine, and resource data programs.","kind":"federal_producer","type":"federal","contact":{"name":"","email":""},"capabilities":[],"datasets":[],"preservation_role":["produce"],"kcf_alignment":"","nyce_priority":""}],"edges":[{"from":"american-geophysical-union","to":"data-foundation---climate-data-collaborative","type":"coordinates"},{"from":"american-geophysical-union","to":"group-on-reference-quality-data-sets","type":"coordinates"},{"from":"american-geophysical-union","to":"keeling-curve-foundation","type":"coordinates"},{"from":"american-geophysical-union","to":"national-academies-earth-obs-workshop","type":"coordinates"},{"from":"american-geophysical-union","to":"new-york-climate-exchange","type":"coordinates"},{"from":"american-geophysical-union","to":"public-environmental-data-partners","type":"coordinates"},{"from":"american-geophysical-union","to":"ship","type":"coordinates"},{"from":"american-geophysical-union","to":"the-data-rescue-project","type":"coordinates"},{"from":"climate-ocean-data-action-network","to":"keeling-curve-foundation","type":"coordinates"},{"from":"climate-ocean-data-action-network","to":"national-academies-earth-obs-workshop","type":"coordinates"},{"from":"climate-ocean-data-action-network","to":"new-york-climate-exchange","type":"coordinates"},{"from":"climate-ocean-data-action-network","to":"public-environmental-data-partners","type":"coordinates"},{"from":"climateus","to":"public-environmental-data-partners","type":"coordinates"},{"from":"code","to":"environmental-health-data-analysis-trust","type":"coordinates"},{"from":"code","to":"public-environmental-data-partners","type":"coordinates"},{"from":"code","to":"the-impact-project","type":"coordinates"},{"from":"cornerstone-data-initiative","to":"data-foundation---climate-data-collaborative","type":"coordinates"},{"from":"data-curation-network","to":"icpsr","type":"coordinates"},{"from":"data-curation-network","to":"the-data-rescue-project","type":"coordinates"},{"from":"data-foundation---climate-data-collaborative","to":"group-on-reference-quality-data-sets","type":"coordinates"},{"from":"data-foundation---climate-data-collaborative","to":"keeling-curve-foundation","type":"coordinates"},{"from":"data-foundation---climate-data-collaborative","to":"national-academies-earth-obs-workshop","type":"coordinates"},{"from":"data-foundation---climate-data-collaborative","to":"new-york-climate-exchange","type":"coordinates"},{"from":"data-foundation---climate-data-collaborative","to":"public-environmental-data-partners","type":"coordinates"},{"from":"data-foundation---climate-data-collaborative","to":"ship","type":"coordinates"},{"from":"data-foundation---climate-data-collaborative","to":"the-impact-project","type":"coordinates"},{"from":"earth-science-information-partners","to":"public-environmental-data-partners","type":"coordinates"},{"from":"earth-science-information-partners","to":"the-data-rescue-project","type":"coordinates"},{"from":"environmental-data-governance-initiative","to":"icpsr","type":"coordinates"},{"from":"environmental-data-governance-initiative","to":"public-environmental-data-partners","type":"coordinates"},{"from":"environmental-health-data-analysis-trust","to":"public-environmental-data-partners","type":"coordinates"},{"from":"environmental-policy-innovation-center","to":"public-environmental-data-partners","type":"coordinates"},{"from":"fractracker","to":"public-environmental-data-partners","type":"coordinates"},{"from":"group-on-reference-quality-data-sets","to":"keeling-curve-foundation","type":"coordinates"},{"from":"group-on-reference-quality-data-sets","to":"national-academies-earth-obs-workshop","type":"coordinates"},{"from":"group-on-reference-quality-data-sets","to":"new-york-climate-exchange","type":"coordinates"},{"from":"icpsr","to":"public-environmental-data-partners","type":"coordinates"},{"from":"icpsr","to":"the-data-rescue-project","type":"coordinates"},{"from":"keeling-curve-foundation","to":"national-academies-earth-obs-workshop","type":"coordinates"},{"from":"keeling-curve-foundation","to":"new-york-climate-exchange","type":"coordinates"},{"from":"national-academies-earth-obs-workshop","to":"new-york-climate-exchange","type":"coordinates"},{"from":"national-academies-earth-obs-workshop","to":"public-environmental-data-partners","type":"coordinates"},{"from":"national-academies-earth-obs-workshop","to":"ship","type":"coordinates"},{"from":"national-academies-earth-obs-workshop","to":"the-impact-project","type":"coordinates"},{"from":"new-york-climate-exchange","to":"public-environmental-data-partners","type":"coordinates"},{"from":"new-york-climate-exchange","to":"the-impact-project","type":"coordinates"},{"from":"public-environmental-data-partners","to":"ship","type":"coordinates"},{"from":"public-environmental-data-partners","to":"the-data-rescue-project","type":"coordinates"},{"from":"public-environmental-data-partners","to":"the-impact-project","type":"coordinates"},{"from":"earth-science-information-partners","to":"fed-nasa","type":"depends_on"},{"from":"earth-science-information-partners","to":"fed-noaa","type":"depends_on"},{"from":"earth-science-information-partners","to":"fed-nsf","type":"depends_on"},{"from":"esri","to":"fed-noaa","type":"depends_on"},{"from":"esri","to":"fed-nasa","type":"depends_on"},{"from":"esri","to":"fed-fema","type":"depends_on"},{"from":"esri","to":"fed-epa","type":"depends_on"},{"from":"pangaea","to":"fed-noaa","type":"depends_on"},{"from":"keeling-curve-foundation","to":"fed-noaa","type":"depends_on"},{"from":"cornerstone-data-initiative","to":"fed-epa","type":"depends_on"},{"from":"environmental-health-data-analysis-trust","to":"fed-epa","type":"depends_on"},{"from":"climateus","to":"fed-noaa","type":"depends_on"},{"from":"climate-program-portal","to":"fed-usda","type":"depends_on"},{"from":"the-data-rescue-project","to":"fed-doe","type":"depends_on"},{"from":"new-york-climate-exchange","to":"fed-noaa","type":"depends_on"},{"from":"new-york-climate-exchange","to":"fed-epa","type":"depends_on"},{"from":"public-environmental-data-partners","to":"fed-epa","type":"depends_on"},{"from":"end-of-term-archive","to":"fed-noaa","type":"depends_on"},{"from":"end-of-term-archive","to":"fed-epa","type":"depends_on"},{"from":"fractracker","to":"fed-epa","type":"depends_on"},{"from":"public-environmental-data-partners","to":"fed-noaa","type":"depends_on"},{"from":"public-environmental-data-partners","to":"fed-usda","type":"depends_on"},{"from":"public-environmental-data-partners","to":"fed-doe","type":"depends_on"},{"from":"public-environmental-data-partners","to":"fed-usgs","type":"depends_on"},{"from":"public-environmental-data-partners","to":"fed-nasa","type":"depends_on"},{"from":"the-data-rescue-project","to":"fed-noaa","type":"depends_on"},{"from":"the-data-rescue-project","to":"fed-epa","type":"depends_on"},{"from":"the-data-rescue-project","to":"fed-usgs","type":"depends_on"},{"from":"the-data-rescue-project","to":"fed-usda","type":"depends_on"},{"from":"the-data-rescue-project","to":"fed-nasa","type":"depends_on"},{"from":"harvards-library-innovation-lab-team","to":"fed-noaa","type":"depends_on"},{"from":"harvards-library-innovation-lab-team","to":"fed-nasa","type":"depends_on"},{"from":"harvards-library-innovation-lab-team","to":"fed-usgs","type":"depends_on"},{"from":"harvards-library-innovation-lab-team","to":"fed-epa","type":"depends_on"},{"from":"harvards-library-innovation-lab-team","to":"fed-usda","type":"depends_on"},{"from":"harvards-library-innovation-lab-team","to":"fed-doe","type":"depends_on"},{"from":"wayback-machine","to":"fed-noaa","type":"depends_on"},{"from":"wayback-machine","to":"fed-nasa","type":"depends_on"},{"from":"wayback-machine","to":"fed-epa","type":"depends_on"},{"from":"wayback-machine","to":"fed-usgs","type":"depends_on"},{"from":"end-of-term-archive","to":"fed-nasa","type":"depends_on"},{"from":"end-of-term-archive","to":"fed-usgs","type":"depends_on"},{"from":"end-of-term-archive","to":"fed-usda","type":"depends_on"},{"from":"end-of-term-archive","to":"fed-doe","type":"depends_on"},{"from":"environmental-data-governance-initiative","to":"fed-epa","type":"depends_on"},{"from":"environmental-data-governance-initiative","to":"fed-noaa","type":"depends_on"},{"from":"group-on-reference-quality-data-sets","to":"fed-noaa","type":"depends_on"},{"from":"group-on-reference-quality-data-sets","to":"fed-nasa","type":"depends_on"},{"from":"group-on-reference-quality-data-sets","to":"fed-usgs","type":"depends_on"},{"from":"group-on-reference-quality-data-sets","to":"fed-nist","type":"depends_on"},{"from":"national-academies-earth-obs-workshop","to":"fed-nasa","type":"depends_on"},{"from":"national-academies-earth-obs-workshop","to":"fed-noaa","type":"depends_on"},{"from":"national-academies-earth-obs-workshop","to":"fed-nsf","type":"depends_on"},{"from":"american-geophysical-union","to":"fed-nasa","type":"depends_on"},{"from":"american-geophysical-union","to":"fed-noaa","type":"depends_on"},{"from":"american-geophysical-union","to":"fed-nsf","type":"depends_on"},{"from":"climate-ocean-data-action-network","to":"fed-noaa","type":"depends_on"},{"from":"keeling-curve-foundation","to":"fed-nasa","type":"depends_on"},{"from":"keeling-curve-foundation","to":"fed-nsf","type":"depends_on"},{"from":"climate-program-portal","to":"fed-epa","type":"depends_on"},{"from":"climate-program-portal","to":"fed-doe","type":"depends_on"},{"from":"climate-program-portal","to":"fed-noaa","type":"depends_on"},{"from":"source-cooperative","to":"fed-nasa","type":"depends_on"},{"from":"source-cooperative","to":"fed-usgs","type":"depends_on"},{"from":"source-cooperative","to":"fed-noaa","type":"depends_on"},{"from":"earth-science-information-partners","to":"fed-epa","type":"depends_on"},{"from":"earth-science-information-partners","to":"fed-usgs","type":"depends_on"},{"from":"icpsr","to":"fed-nsf","type":"depends_on"},{"from":"ipums","to":"fed-nsf","type":"depends_on"},{"from":"fractracker","to":"fed-doi","type":"depends_on"},{"from":"cornerstone-data-initiative","to":"fed-doe","type":"depends_on"},{"from":"the-impact-project","to":"fed-epa","type":"depends_on"},{"from":"the-impact-project","to":"fed-noaa","type":"depends_on"},{"from":"silencing-science-tracker","to":"fed-noaa","type":"depends_on"},{"from":"silencing-science-tracker","to":"fed-epa","type":"depends_on"},{"from":"climateus","to":"fed-nasa","type":"depends_on"}]}</script>
+
+<!-- (3) Network library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/10.0.2/standalone/umd/vis-network.min.js"
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+
+<!-- (4) App - defers until load + fonts.ready + 2 RAF to let layout settle -->
+<script>
+(function () {
+  'use strict';
+
+  function showLoadError(detail) {
+    var banner = document.getElementById('error-banner');
+    var dt = document.getElementById('error-detail');
+    if (dt && detail) dt.textContent = detail;
+    if (banner) banner.style.display = 'block';
+    var loading = document.getElementById('loading-overlay');
+    if (loading) loading.classList.add('hidden');
+    console.error('Stewardship KG init failed:', detail || '(no detail)');
+  }
+
+  function whenLayoutSettled(cb) {
+    var fontsP = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    Promise.resolve(fontsP).catch(function(){}).then(function(){
+      requestAnimationFrame(function() {
+        requestAnimationFrame(cb);
+      });
+    });
+  }
+
+  function start() {
+    if (typeof vis === 'undefined' || !vis.Network) {
+      showLoadError('vis-network library not available (window.vis is undefined). The CDN may be blocked or unreachable.');
+      return;
+    }
+    whenLayoutSettled(initNetwork);
+  }
+
+  function initNetwork() {
+    var DATA;
+    try {
+      DATA = JSON.parse(document.getElementById('kg-data').textContent);
+    } catch (e) {
+      showLoadError('Embedded data could not be parsed: ' + e.message);
+      return;
+    }
+
+    var ROLE_COLORS = {
+      produce:'#8c6a2c', preserve:'#1f3a2e', activate:'#944a3b',
+      coordinate:'#4a6b88', advocate:'#6b3a5a', train:'#7a6840'
+    };
+    var ROLE_ORDER = ['produce','preserve','activate','coordinate','advocate','train'];
+    var FED_BG = '#2a3540', FED_BG_DEEP = '#1a242e', FED_FG = '#f4efe4';
+
+    var orgById = {};
+    DATA.orgs.forEach(function(o){ orgById[o.id] = o; });
+
+    function primaryRole(o){ return (o.preservation_role && o.preservation_role[0]) || 'preserve'; }
+    function nodeColor(r){ return ROLE_COLORS[r] || '#4a5556'; }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+      });
+    }
+    function truncate(s, n){
+      if (!s) return '';
+      if (s.length <= n) return s;
+      var sl = s.slice(0, n);
+      var sp = sl.lastIndexOf(' ');
+      if (sp > n - 30) sl = sl.slice(0, sp);
+      return sl + '...';
+    }
+
+    function buildTooltipForOrg(o) {
+      var tt = document.createElement('div');
+      var coordCount = DATA.edges.filter(function(e){ return e.type==='coordinates' && (e.from===o.id || e.to===o.id); }).length;
+      var depCount   = DATA.edges.filter(function(e){ return e.type==='depends_on' && e.from===o.id; }).length;
+      var roles = (o.preservation_role||[]).slice(0,4);
+      var html = '';
+      html += '<div class="tt-head">';
+      html += '<div class="tt-name">' + escapeHtml(o.name) + '</div>';
+      var sub = [];
+      if (o.type) sub.push(o.type);
+      if (o.kcf_alignment==='inner') sub.push('KCF Inner');
+      else if (o.kcf_alignment==='adjacent') sub.push('KCF Adjacent');
+      if (o.nyce_priority) sub.push('NYCE: '+o.nyce_priority);
+      if (sub.length) html += '<div class="tt-sub">'+sub.join('  &middot;  ')+'</div>';
+      html += '</div>';
+      html += '<div class="tt-body">';
+      if (o.description) html += '<p class="tt-desc">'+escapeHtml(truncate(o.description,180))+'</p>';
+      if (roles.length) {
+        html += '<div class="tt-roles">';
+        roles.forEach(function(r){ html += '<span class="tt-role tt-role-'+r+'">'+r+'</span>'; });
+        html += '</div>';
+      }
+      html += '</div>';
+      html += '<div class="tt-foot">' + coordCount + ' coord ties &middot; ' + depCount + ' fed deps &middot; click for details</div>';
+      tt.innerHTML = html;
+      return tt;
+    }
+
+    function buildTooltipForFederal(o) {
+      var tt = document.createElement('div');
+      var depCount = DATA.edges.filter(function(e){ return e.type==='depends_on' && e.to===o.id; }).length;
+      var html = '';
+      html += '<div class="tt-head fed">';
+      html += '<div class="tt-name">'+escapeHtml(o.name)+'</div>';
+      var sub = ['Federal Producer'];
+      if (o.parent) sub.push(o.parent);
+      html += '<div class="tt-sub">'+sub.join('  &middot;  ')+'</div>';
+      html += '</div>';
+      html += '<div class="tt-body">';
+      if (o.description) html += '<p class="tt-desc">'+escapeHtml(truncate(o.description,200))+'</p>';
+      html += '</div>';
+      html += '<div class="tt-foot fed">' + depCount + ' dependent orgs &middot; click for details</div>';
+      tt.innerHTML = html;
+      return tt;
+    }
+
+    function buildNode(o) {
+      if (o.kind === 'federal_producer') {
+        return {
+          id: o.id, label: o.name, title: buildTooltipForFederal(o),
+          shape: 'box',
+          color: { background: FED_BG, border: FED_BG_DEEP,
+                   highlight:{background:FED_BG, border:'#d4b06a'},
+                   hover:{background:FED_BG, border:'#d4b06a'} },
+          borderWidth: 2, borderWidthSelected: 4,
+          font: { color: FED_FG, face: 'Manrope, system-ui, sans-serif', size: 14, bold: true },
+          margin: 10, shapeProperties: { borderRadius: 3 },
+          widthConstraint: { minimum: 56 }, heightConstraint: { minimum: 32 },
+          shadow: { enabled: true, color: 'rgba(26,36,46,.30)', size: 12, x: 0, y: 3 },
+          _kind: 'federal_producer', _org: o
+        };
+      }
+      var role = primaryRole(o);
+      var color = nodeColor(role);
+      var isInner = o.kcf_alignment === 'inner';
+      var size = 14;
+      if (o.nyce_priority==='High') size = 21;
+      else if (o.nyce_priority==='Medium') size = 17;
+      return {
+        id: o.id, label: o.name.replace(/ \([^)]*\)$/, ''),
+        title: buildTooltipForOrg(o),
+        shape: 'dot', size: size,
+        color: { background: color, border: isInner ? '#b08840' : color,
+                 highlight: {background:color, border:'#b08840'},
+                 hover: {background:color, border:'#b08840'} },
+        borderWidth: isInner ? 3 : 1, borderWidthSelected: 4,
+        font: { color:'#0e1410', face:'Manrope, system-ui, sans-serif', size: 12, strokeWidth: 5, strokeColor: '#f4efe4' },
+        shadow: isInner ? { enabled:true, color:'rgba(176,136,64,.32)', size:14, x:0, y:0 } : false,
+        _kind: 'organization', _role: role, _org: o
+      };
+    }
+
+    function buildEdge(e, i) {
+      if (e.type === 'depends_on') {
+        return {
+          id: 'e'+i, from: e.from, to: e.to,
+          arrows: { to: { enabled: true, scaleFactor: 0.4, type: 'arrow' } },
+          color: { color:'rgba(176,136,64,0.35)', highlight:'#b08840', hover:'#8c6a2c' },
+          dashes: [4, 4], width: 1,
+          smooth: { type: 'curvedCW', roundness: 0.18 },
+          _type: 'depends_on'
+        };
+      }
+      return {
+        id: 'e'+i, from: e.from, to: e.to,
+        color: { color:'rgba(74,85,86,0.32)', highlight:'#b08840', hover:'#8c6a2c' },
+        width: 1.2, smooth: { type: 'continuous', roundness: 0.25 },
+        _type: 'coordinates'
+      };
+    }
+
+    var nodes, edges, network;
+    try {
+      nodes = new vis.DataSet(DATA.orgs.map(buildNode));
+      edges = new vis.DataSet(DATA.edges.map(buildEdge));
+      var container = document.getElementById('network');
+      if (!container) throw new Error('#network container missing');
+      // Confirm the container has nonzero dimensions before instantiating
+      var rect = container.getBoundingClientRect();
+      if (rect.width < 50 || rect.height < 50) {
+        // Try again after one more RAF
+        requestAnimationFrame(function() {
+          var r2 = container.getBoundingClientRect();
+          if (r2.width < 50 || r2.height < 50) {
+            showLoadError('Graph container has zero dimensions ('+r2.width+'x'+r2.height+'). Try resizing the window.');
+            return;
+          }
+          createNetwork(container, nodes, edges);
+        });
+        return;
+      }
+      createNetwork(container, nodes, edges);
+    } catch (e) {
+      showLoadError('Network instantiation failed: ' + (e && e.message ? e.message : String(e)));
+      return;
+    }
+
+    function createNetwork(container, nodes, edges) {
+      try {
+        network = new vis.Network(container, { nodes: nodes, edges: edges }, {
+          physics: {
+            enabled: true,
+            solver: 'forceAtlas2Based',
+            forceAtlas2Based: {
+              gravitationalConstant: -85, centralGravity: 0.012,
+              springLength: 155, springConstant: 0.052,
+              damping: 0.5, avoidOverlap: 0.6
+            },
+            stabilization: { iterations: 300, fit: true }
+          },
+          interaction: {
+            hover: true, tooltipDelay: 150,
+            navigationButtons: false, keyboard: false
+          },
+          nodes: { borderWidthSelected: 4 },
+          edges: { selectionWidth: 2, hoverWidth: 1 }
+        });
+      } catch (e) {
+        showLoadError('vis.Network constructor threw: ' + (e && e.message ? e.message : String(e)));
+        return;
+      }
+
+      // Hide loading overlay once stabilization completes
+      network.once('stabilizationIterationsDone', function() {
+        network.setOptions({ physics: { enabled: false } });
+        var loading = document.getElementById('loading-overlay');
+        if (loading) loading.classList.add('hidden');
+      });
+      // Fallback: hide overlay after 6s no matter what
+      setTimeout(function() {
+        var loading = document.getElementById('loading-overlay');
+        if (loading) loading.classList.add('hidden');
+      }, 6000);
+
+      wireApp(DATA, nodes, edges, network, orgById);
+    }
+  }
+
+  function wireApp(DATA, nodes, edges, network, orgById) {
+    var ROLE_COLORS = { produce:'#8c6a2c', preserve:'#1f3a2e', activate:'#944a3b', coordinate:'#4a6b88', advocate:'#6b3a5a', train:'#7a6840' };
+    var ROLE_ORDER = ['produce','preserve','activate','coordinate','advocate','train'];
+    function primaryRole(o){ return (o.preservation_role && o.preservation_role[0]) || 'preserve'; }
+    function nodeColor(r){ return ROLE_COLORS[r] || '#4a5556'; }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+    function uniqueAccum(items, keyFn, multi) {
+      var c = {};
+      items.forEach(function(it){
+        var v = keyFn(it);
+        if (!multi) v = [v];
+        v.forEach(function(x){ if(x) c[x] = (c[x]||0)+1; });
+      });
+      return Object.keys(c).sort().map(function(k){ return {value:k, count:c[k]}; });
+    }
+
+    var orgsOnly = DATA.orgs.filter(function(o){ return o.kind==='organization'; });
+    var fedsOnly = DATA.orgs.filter(function(o){ return o.kind==='federal_producer'; });
+
+    var roleCounts = uniqueAccum(orgsOnly, function(o){return o.preservation_role;}, true);
+    roleCounts.sort(function(a,b){ return ROLE_ORDER.indexOf(a.value) - ROLE_ORDER.indexOf(b.value); });
+    var capCounts = uniqueAccum(orgsOnly, function(o){return o.capabilities;}, true);
+    var dsCounts  = uniqueAccum(orgsOnly, function(o){return o.datasets;}, true);
+    var kcfCounts = uniqueAccum(orgsOnly, function(o){return o.kcf_alignment||'';}, false).filter(function(x){return x.value;});
+    var priCounts = uniqueAccum(orgsOnly, function(o){return o.nyce_priority||'';}, false).filter(function(x){return x.value;});
+
+    var fedDepCount = {};
+    DATA.edges.forEach(function(e){ if(e.type==='depends_on') fedDepCount[e.to] = (fedDepCount[e.to]||0)+1; });
+    var fedCounts = fedsOnly.map(function(f){ return { value:f.id, label:f.name, count:fedDepCount[f.id]||0 }; })
+                            .sort(function(a,b){ return b.count - a.count; });
+
+    function buildPills(container, items, group, withDot) {
+      items.forEach(function(it){
+        var btn = document.createElement('button');
+        btn.className = 'pill-btn';
+        btn.dataset.group = group;
+        btn.dataset.value = it.value;
+        if (group==='role') btn.dataset.role = it.value;
+        if (group==='fed') {
+          var sq = document.createElement('span'); sq.className='square';
+          btn.appendChild(sq);
+        } else if (withDot) {
+          var dot = document.createElement('span'); dot.className='dot';
+          if (group==='role') dot.style.background = ROLE_COLORS[it.value]||'';
+          btn.appendChild(dot);
+        }
+        var lbl = document.createElement('span'); lbl.textContent = it.label||it.value;
+        btn.appendChild(lbl);
+        var cnt = document.createElement('span'); cnt.className='count'; cnt.textContent = it.count;
+        btn.appendChild(cnt);
+        btn.addEventListener('click', function(){
+          btn.classList.toggle('active');
+          applyFilters();
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    buildPills(document.getElementById('role-pills'), roleCounts, 'role', true);
+    buildPills(document.getElementById('cap-pills'),  capCounts,  'cap',  false);
+    buildPills(document.getElementById('ds-pills'),   dsCounts,   'ds',   false);
+    buildPills(document.getElementById('kcf-pills'),  kcfCounts,  'kcf',  false);
+    buildPills(document.getElementById('pri-pills'),  priCounts,  'pri',  false);
+    buildPills(document.getElementById('fed-pills'),  fedCounts,  'fed',  false);
+
+    function activeValues(g){
+      var ns = document.querySelectorAll('.pill-btn[data-group="'+g+'"].active');
+      return Array.prototype.slice.call(ns).map(function(n){return n.dataset.value;});
+    }
+
+    function orgMatches(o){
+      var role=activeValues('role'),cap=activeValues('cap'),ds=activeValues('ds'),kcf=activeValues('kcf'),pri=activeValues('pri'),fed=activeValues('fed');
+      if (role.length && !o.preservation_role.some(function(r){return role.indexOf(r)>=0;})) return false;
+      if (cap.length  && !o.capabilities.some(function(c){return cap.indexOf(c)>=0;})) return false;
+      if (ds.length   && !o.datasets.some(function(d){return ds.indexOf(d)>=0;})) return false;
+      if (kcf.length  && kcf.indexOf(o.kcf_alignment)<0) return false;
+      if (pri.length  && pri.indexOf(o.nyce_priority)<0) return false;
+      if (fed.length) {
+        var deps = DATA.edges.filter(function(e){return e.type==='depends_on' && e.from===o.id;}).map(function(e){return e.to;});
+        if (!deps.some(function(d){return fed.indexOf(d)>=0;})) return false;
+      }
+      return true;
+    }
+
+    function applyFilters() {
+      var vis = {};
+      var anyActive = activeValues('role').length || activeValues('cap').length || activeValues('ds').length || activeValues('kcf').length || activeValues('pri').length || activeValues('fed').length;
+      var fedSel = activeValues('fed');
+      orgsOnly.forEach(function(o){ if(orgMatches(o)) vis[o.id]=true; });
+      fedsOnly.forEach(function(f){
+        if (!anyActive) { vis[f.id]=true; return; }
+        if (fedSel.length && fedSel.indexOf(f.id)>=0) { vis[f.id]=true; return; }
+        var hasDep = DATA.edges.some(function(e){ return e.type==='depends_on' && e.to===f.id && vis[e.from]; });
+        if (hasDep) vis[f.id]=true;
+      });
+      var visE = 0;
+      nodes.forEach(function(n){ nodes.update({id:n.id, hidden: !vis[n.id]}); });
+      edges.forEach(function(e){
+        var h = !(vis[e.from] && vis[e.to]);
+        if (!h) visE++;
+        edges.update({id:e.id, hidden: h});
+      });
+      var visO = orgsOnly.filter(function(o){return vis[o.id];}).length;
+      var visF = fedsOnly.filter(function(f){return vis[f.id];}).length;
+      updateStats(visO, visF, visE);
+    }
+
+    function updateStats(visO, visF, visE) {
+      var s = document.getElementById('stats');
+      s.innerHTML = '';
+      function row(l,v){ var r=document.createElement('div'); r.className='stat-row'; var a=document.createElement('span');a.className='label';a.textContent=l; var b=document.createElement('span');b.className='val';b.textContent=v; r.appendChild(a);r.appendChild(b); s.appendChild(r); }
+      function hr(){ var h=document.createElement('hr'); s.appendChild(h); }
+      row('orgs', visO); row('federal', visF); row('ties', visE);
+      hr();
+      var rc = {};
+      nodes.get({ filter: function(n){ return !n.hidden && n._kind==='organization'; } }).forEach(function(n){
+        orgById[n.id].preservation_role.forEach(function(r){ rc[r]=(rc[r]||0)+1; });
+      });
+      ROLE_ORDER.forEach(function(r){ if(rc[r]) row(r, rc[r]); });
+    }
+
+    document.getElementById('reset-btn').addEventListener('click', function(){
+      document.querySelectorAll('.pill-btn.active').forEach(function(b){ b.classList.remove('active'); });
+      applyFilters();
+    });
+    document.getElementById('fit-btn').addEventListener('click', function(){
+      network.fit({ animation: { duration: 500, easingFunction: 'easeInOutCubic' } });
+    });
+
+    function renderFederalDetail(o) {
+      var detail = document.getElementById('detail');
+      var aliases = o.aliases && o.aliases.length ? o.aliases.join('  &middot;  ') : '';
+      var html = '';
+      html += '<h2>Federal Producer</h2>';
+      html += '<div class="org-header"><h3 class="org-name federal">'+escapeHtml(o.name)+'</h3>';
+      if (aliases) html += '<div class="org-aliases">'+aliases+'</div>';
+      html += '</div>';
+      html += '<div class="org-type-row"><span class="badge federal">Federal Producer</span>';
+      if (o.parent) html += '<span class="badge parent">'+escapeHtml(o.parent)+'</span>';
+      html += '</div>';
+      if (o.description) html += '<div class="org-description">'+escapeHtml(o.description)+'</div>';
+      var deps = DATA.edges.filter(function(e){return e.type==='depends_on' && e.to===o.id;}).map(function(e){return orgById[e.from];}).filter(function(x){return x;}).sort(function(a,b){return a.name.localeCompare(b.name);});
+      if (deps.length) {
+        html += '<div class="org-field federal-section"><div class="label">Orgs working with '+escapeHtml(o.name)+' data ('+deps.length+')</div><ul class="org-coords-list">';
+        deps.forEach(function(t){
+          html += '<li><a data-jump-to="'+t.id+'"><span class="role-marker" style="background:'+nodeColor(primaryRole(t))+'"></span>'+escapeHtml(t.name)+'</a></li>';
+        });
+        html += '</ul></div>';
+      }
+      if (o.url) html += '<div class="org-field"><div class="label">Website</div><a class="org-url-link" href="'+escapeHtml(o.url)+'" target="_blank" rel="noopener">'+escapeHtml(o.url)+'</a></div>';
+      detail.innerHTML = html;
+      wireJumpLinks(detail);
+    }
+
+    function renderOrgDetail(o) {
+      var detail = document.getElementById('detail');
+      var aliases = o.aliases && o.aliases.length ? o.aliases.join('  &middot;  ') : '';
+      var html = '<h2>Organization</h2><div class="org-header"><h3 class="org-name">'+escapeHtml(o.name)+'</h3>';
+      if (aliases) html += '<div class="org-aliases">'+aliases+'</div>';
+      html += '</div>';
+      html += '<div class="org-type-row">';
+      if (o.type) html += '<span class="badge">'+escapeHtml(o.type)+'</span>';
+      if (o.kcf_alignment==='inner') html += '<span class="badge kcf-inner">KCF inner orbit</span>';
+      else if (o.kcf_alignment==='adjacent') html += '<span class="badge">KCF adjacent</span>';
+      if (o.nyce_priority) html += '<span class="badge priority-'+o.nyce_priority+'">NYCE: '+o.nyce_priority+'</span>';
+      html += '</div>';
+      if (o.description) html += '<div class="org-description">'+escapeHtml(o.description)+'</div>';
+      if (o.preservation_role && o.preservation_role.length) {
+        html += '<div class="org-field"><div class="label">Lifecycle Role</div><div class="tag-row">';
+        o.preservation_role.forEach(function(r){ html += '<span class="tag role-'+r+'">'+r+'</span>'; });
+        html += '</div></div>';
+      }
+      if (o.capabilities && o.capabilities.length) {
+        html += '<div class="org-field"><div class="label">Capabilities (NYCE Matrix)</div><div class="tag-row">';
+        o.capabilities.forEach(function(c){ html += '<span class="tag">'+escapeHtml(c)+'</span>'; });
+        html += '</div></div>';
+      }
+      if (o.datasets && o.datasets.length) {
+        html += '<div class="org-field"><div class="label">Data Domains</div><div class="tag-row">';
+        o.datasets.forEach(function(d){ html += '<span class="tag">'+escapeHtml(d)+'</span>'; });
+        html += '</div></div>';
+      }
+      var feds = DATA.edges.filter(function(e){return e.type==='depends_on' && e.from===o.id;}).map(function(e){return orgById[e.to];}).filter(function(x){return x;});
+      if (feds.length) {
+        html += '<div class="org-field"><div class="label">Federal Data Dependencies ('+feds.length+')</div><div class="tag-row">';
+        feds.forEach(function(f){ html += '<span class="tag federal" data-jump-to="'+f.id+'" style="cursor:pointer">'+escapeHtml(f.name)+'</span>'; });
+        html += '</div></div>';
+      }
+      var ties = DATA.edges.filter(function(e){return e.type==='coordinates' && (e.from===o.id||e.to===o.id);}).map(function(e){return e.from===o.id?e.to:e.from;}).map(function(id){return orgById[id];}).filter(function(x){return x;}).sort(function(a,b){return a.name.localeCompare(b.name);});
+      if (ties.length) {
+        html += '<div class="org-field"><div class="label">Coordinates with ('+ties.length+')</div><ul class="org-coords-list">';
+        ties.forEach(function(t){ html += '<li><a data-jump-to="'+t.id+'"><span class="role-marker" style="background:'+nodeColor(primaryRole(t))+'"></span>'+escapeHtml(t.name)+'</a></li>'; });
+        html += '</ul></div>';
+      }
+      if (o.contact && (o.contact.name||o.contact.email)) {
+        html += '<div class="org-field"><div class="label">Contact</div><div class="org-contact-row">';
+        if (o.contact.name)  html += '<span class="person">'+escapeHtml(o.contact.name)+'</span>';
+        if (o.contact.email) html += '<span class="email">'+escapeHtml(o.contact.email)+'</span>';
+        html += '</div></div>';
+      }
+      if (o.url) html += '<div class="org-field"><div class="label">Website</div><a class="org-url-link" href="'+escapeHtml(o.url)+'" target="_blank" rel="noopener">'+escapeHtml(o.url)+'</a></div>';
+      detail.innerHTML = html;
+      wireJumpLinks(detail);
+    }
+
+    function wireJumpLinks(detail) {
+      detail.querySelectorAll('[data-jump-to]').forEach(function(a){
+        a.addEventListener('click', function(ev){
+          ev.preventDefault();
+          var id = a.getAttribute('data-jump-to');
+          network.selectNodes([id]);
+          network.focus(id, { scale: 1.0, animation: { duration: 400, easingFunction: 'easeInOutCubic' } });
+          renderAny(orgById[id]);
+        });
+      });
+    }
+    function renderAny(o){ if (o.kind==='federal_producer') renderFederalDetail(o); else renderOrgDetail(o); }
+
+    network.on('selectNode', function(params){
+      var id = params.nodes[0];
+      if (id && orgById[id]) renderAny(orgById[id]);
+    });
+
+    // ---- Export ----
+    function buildComposite(callback) {
+      var srcCanvas = network.canvas.frame.canvas;
+      network.fit();
+      setTimeout(function() {
+        var srcW = srcCanvas.width;
+        var srcH = srcCanvas.height;
+        var dpr = window.devicePixelRatio || 1;
+        var TITLE_H = 90*dpr, LEGEND_H = 180*dpr, PAD = 32*dpr;
+        var W = srcW, H = TITLE_H + srcH + LEGEND_H;
+        var c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = '#f4efe4'; ctx.fillRect(0, 0, W, H);
+
+        ctx.fillStyle = '#16291f';
+        ctx.font = '600 ' + (28*dpr) + 'px "Crimson Pro", Georgia, serif';
+        ctx.textBaseline = 'top';
+        ctx.fillText('Climate Data Stewardship Landscape', PAD, PAD);
+
+        ctx.fillStyle = '#4a5556';
+        ctx.font = (11*dpr) + 'px "JetBrains Mono", monospace';
+        var dateStr = new Date().toISOString().slice(0,10);
+        var subText = 'schema v0.9  ·  generated '+dateStr+'  ·  '+orgsOnly.length+' orgs  ·  '+fedsOnly.length+' federal  ·  '+DATA.edges.length+' ties';
+        ctx.fillText(subText, PAD, PAD + 28*dpr + 8*dpr);
+
+        ctx.strokeStyle = '#c8bda3'; ctx.lineWidth = 1*dpr;
+        ctx.beginPath(); ctx.moveTo(PAD, TITLE_H-1*dpr); ctx.lineTo(W-PAD, TITLE_H-1*dpr); ctx.stroke();
+
+        ctx.drawImage(srcCanvas, 0, TITLE_H);
+        drawLegend(ctx, PAD, TITLE_H + srcH + 12*dpr, W - 2*PAD, dpr);
+
+        ctx.strokeStyle = '#c8bda3';
+        ctx.beginPath(); ctx.moveTo(PAD, TITLE_H + srcH + 4*dpr); ctx.lineTo(W-PAD, TITLE_H + srcH + 4*dpr); ctx.stroke();
+        callback(c);
+      }, 700);
+    }
+
+    function drawLegend(ctx, x, y, w, dpr) {
+      var roles = [['produce','#8c6a2c'],['preserve','#1f3a2e'],['activate','#944a3b'],['coordinate','#4a6b88'],['advocate','#6b3a5a'],['train','#7a6840']];
+      var rowH = 18*dpr;
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#1f3a2e'; ctx.font = '600 '+(10*dpr)+'px "Crimson Pro", serif';
+      ctx.fillText('ROLES', x, y);
+      var col1 = x, col2 = x + w*0.34, col3 = x + w*0.68;
+      ctx.font = (11*dpr)+'px "Manrope", sans-serif';
+      for (var i=0; i<roles.length; i++) {
+        var cx = (i<3 ? col1 : col2);
+        var ry = y + 20*dpr + (i%3)*rowH;
+        ctx.fillStyle = roles[i][1];
+        ctx.beginPath(); ctx.arc(cx+5*dpr, ry+7*dpr, 5*dpr, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#2a342c'; ctx.fillText(roles[i][0], cx+16*dpr, ry);
+      }
+      ctx.fillStyle = '#1f3a2e'; ctx.font = '600 '+(10*dpr)+'px "Crimson Pro", serif';
+      ctx.fillText('NODE TYPES', col3, y);
+      ctx.font = (11*dpr)+'px "Manrope", sans-serif';
+      var ky = y + 20*dpr;
+      ctx.fillStyle = '#f4efe4'; ctx.beginPath(); ctx.arc(col3+6*dpr, ky+7*dpr, 5*dpr, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#b08840'; ctx.lineWidth = 2*dpr; ctx.stroke();
+      ctx.fillStyle = '#2a342c'; ctx.fillText('KCF inner orbit (brass ring)', col3+18*dpr, ky);
+      var fy = ky + rowH;
+      ctx.fillStyle = '#2a3540'; ctx.fillRect(col3+1*dpr, fy+2*dpr, 11*dpr, 11*dpr);
+      ctx.fillStyle = '#2a342c'; ctx.fillText('federal producer (anchor)', col3+18*dpr, fy);
+      var ey = ky + 2*rowH;
+      ctx.strokeStyle = 'rgba(74,85,86,0.4)'; ctx.lineWidth = 1.5*dpr; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(col3, ey+7*dpr); ctx.lineTo(col3+14*dpr, ey+7*dpr); ctx.stroke();
+      ctx.fillStyle = '#2a342c'; ctx.fillText('coordinates with', col3+18*dpr, ey);
+      var dy = ky + 3*rowH;
+      ctx.strokeStyle = 'rgba(176,136,64,0.7)'; ctx.setLineDash([4*dpr, 4*dpr]);
+      ctx.beginPath(); ctx.moveTo(col3, dy+7*dpr); ctx.lineTo(col3+14*dpr, dy+7*dpr); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#2a342c'; ctx.fillText('depends on (data)', col3+18*dpr, dy);
+      ctx.fillStyle = '#4a5556'; ctx.font = (9*dpr)+'px "JetBrains Mono", monospace';
+      ctx.fillText("SC / KCF DCI x NYCE DSI  ·  built from Megha's organizations CSV + prior NYCE landscape analysis", x, y + 130*dpr);
+    }
+
+    document.getElementById('export-png').addEventListener('click', function(){
+      var btn = this; btn.disabled = true; btn.textContent = 'Rendering...';
+      buildComposite(function(canvas){
+        canvas.toBlob(function(blob){
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url; a.download = 'climate-data-stewardship-landscape-v0.9.png';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          btn.disabled = false; btn.innerHTML = '<span class="ico">PNG</span> Export';
+        }, 'image/png');
+      });
+    });
+
+    document.getElementById('export-pdf').addEventListener('click', function(){
+      var btn = this; btn.disabled = true; btn.textContent = 'Loading PDF...';
+      if (typeof jspdf === 'undefined') {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.3/jspdf.umd.min.js';
+        s.onload = function(){ doExportPdf(btn); };
+        s.onerror = function(){
+          btn.disabled = false; btn.innerHTML = '<span class="ico">PDF</span> Export';
+          alert('Failed to load PDF library. Try PNG instead.');
+        };
+        document.head.appendChild(s);
+      } else doExportPdf(btn);
+    });
+    function doExportPdf(btn) {
+      btn.textContent = 'Rendering...';
+      buildComposite(function(canvas){
+        try {
+          var imgData = canvas.toDataURL('image/png');
+          var jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
+          if (!jsPDFCtor) throw new Error('jsPDF not available');
+          var w = canvas.width, h = canvas.height;
+          var pageW = Math.max(842, w * 0.5);
+          var pageH = (h / w) * pageW;
+          var pdf = new jsPDFCtor({ orientation: pageW > pageH ? 'landscape':'portrait', unit:'pt', format:[pageW, pageH] });
+          pdf.addImage(imgData, 'PNG', 0, 0, pageW, pageH);
+          pdf.save('climate-data-stewardship-landscape-v0.9.pdf');
+        } catch (e) {
+          console.error(e);
+          alert('PDF generation failed: ' + (e && e.message ? e.message : String(e)));
+        }
+        btn.disabled = false; btn.innerHTML = '<span class="ico">PDF</span> Export';
+      });
+    }
+
+    // Boot
+    document.getElementById('org-count').textContent = orgsOnly.length;
+    document.getElementById('fed-count').textContent = fedsOnly.length;
+    document.getElementById('edge-count').textContent = DATA.edges.length;
+    updateStats(orgsOnly.length, fedsOnly.length, DATA.edges.length);
+  }
+
+  // Bootstrap
+  if (document.readyState === 'complete') {
+    start();
+  } else {
+    window.addEventListener('load', start);
+  }
+})();
+</script>
+
+</body>
+</html>
